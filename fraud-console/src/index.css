@@ -1,0 +1,7 @@
+@import "tailwindcss";
+body{background:#070b17;color:#e7ecf8;font-family:'Space Grotesk',system-ui,sans-serif}
+.flash{animation:flash 2.4s ease-out,slide .4s ease-out}
+@keyframes flash{0%{background:#ef444440}100%{background:transparent}}
+@keyframes slide{from{transform:translateY(-14px);opacity:0}to{transform:none;opacity:1}}
+.drawer{animation:dr .25s ease-out}@keyframes dr{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.flash,.drawer{animation:none}}

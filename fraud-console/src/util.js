@@ -1,0 +1,12 @@
+import {Zap,Banknote,MapPinOff,CircleDot} from 'lucide-react';
+export const RULES={velocity:{I:Zap,n:'Velocity',c:'#f59e0b'},amount:{I:Banknote,n:'Amount',c:'#38bdf8'},impossible_location:{I:MapPinOff,n:'Impossible location',c:'#f43f5e'}};
+const PAL=['#a78bfa','#34d399','#fb923c','#22d3ee','#f472b6','#facc15'];
+const pretty=r=>{const s=r.replace(/_rule$/,'').replace(/_/g,' ');return s[0].toUpperCase()+s.slice(1)};
+export const ruleMeta=r=>RULES[r]||{I:CircleDot,n:pretty(r),c:PAL[[...r].reduce((a,ch)=>a+ch.charCodeAt(0),0)%PAL.length]};
+export const col=s=>s>=70?'#ef4444':s>=40?'#f59e0b':'#60a5fa';
+export const lvlName=s=>s>=70?'HIGH RISK':s>=40?'MEDIUM':'LOW';
+export const label={PENDING:'Flagged',REVIEWED:'Reviewed',CLEARED:'Cleared'};
+export const stCls={PENDING:'bg-red-500/15 text-red-300',REVIEWED:'bg-amber-500/15 text-amber-300',CLEARED:'bg-green-500/15 text-green-300'};
+export const money=(a,c='INR')=>new Intl.NumberFormat('en-IN',{style:'currency',currency:c,maximumFractionDigits:0}).format(a);
+export const tm=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+export const beep=()=>{try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.setValueAtTime(.08,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.4);o.start();o.stop(a.currentTime+.4)}catch{}};
