@@ -1,10 +1,13 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+
+from ..security import WRITE_LIMIT, limiter, require_api_key
 
 from .. import crud
 from ..database import get_db
+from ..models import AuditLog
 from ..schemas import (
     FlagOut,
     PagedFlags,
@@ -43,33 +46,54 @@ def get_flag(flag_id: int, db: Session = Depends(get_db)):
 
 
 def _change_status(
-    flag_id: int, new_status: str, body: Optional[ReviewRequest], db: Session
+    flag_id: int, new_status: str, body: Optional[ReviewRequest], db: Session,
+    request: Optional[Request] = None,
 ) -> FlagOut:
     flag = crud.get_flag(db, flag_id)
     if flag is None:
         raise HTTPException(status_code=404, detail="Flag not found")
+    previous_status = flag.review_status
     try:
         flag = crud.set_review_status(
             db, flag, new_status, body.comment if body else None
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+    # Write immutable audit trail
+    client_ip = request.client.host if request and request.client else None
+    db.add(AuditLog(
+        flag_id=flag.id,
+        action=new_status,
+        previous_status=previous_status,
+        new_status=new_status,
+        comment=body.comment if body else None,
+        client_ip=client_ip,
+    ))
+    db.commit()
+
     return FlagOut.model_validate(flag)
 
 
-@router.patch("/{flag_id}/review", response_model=FlagOut)
+@router.patch("/{flag_id}/review", response_model=FlagOut,
+              dependencies=[Depends(require_api_key)])
+@limiter.limit(WRITE_LIMIT)
 def review_flag(
+    request: Request,
     flag_id: int,
     body: Optional[ReviewRequest] = None,
     db: Session = Depends(get_db),
 ):
-    return _change_status(flag_id, "REVIEWED", body, db)
+    return _change_status(flag_id, "REVIEWED", body, db, request)
 
 
-@router.patch("/{flag_id}/clear", response_model=FlagOut)
+@router.patch("/{flag_id}/clear", response_model=FlagOut,
+              dependencies=[Depends(require_api_key)])
+@limiter.limit(WRITE_LIMIT)
 def clear_flag(
+    request: Request,
     flag_id: int,
     body: Optional[ReviewRequest] = None,
     db: Session = Depends(get_db),
 ):
-    return _change_status(flag_id, "CLEARED", body, db)
+    return _change_status(flag_id, "CLEARED", body, db, request)

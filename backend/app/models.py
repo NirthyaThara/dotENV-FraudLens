@@ -72,3 +72,24 @@ class FraudFlag(Base):
         ),
         CheckConstraint("risk_score BETWEEN 0 AND 100", name="ck_flag_score"),
     )
+
+
+class AuditLog(Base):
+    """Immutable record of every flag review action.
+
+    Written once, never updated. Gives a full paper trail for compliance:
+    who changed what flag, when, from which IP, and what comment they left.
+    """
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    flag_id: Mapped[int] = mapped_column(
+        ForeignKey("fraud_flags.id", ondelete="CASCADE"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(10))          # "REVIEWED" | "CLEARED"
+    previous_status: Mapped[str] = mapped_column(String(10))
+    new_status: Mapped[str] = mapped_column(String(10))
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    client_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)  # IPv6 max
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+

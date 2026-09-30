@@ -1,7 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy.orm import Session
+
+from ..security import WRITE_LIMIT, limiter, require_api_key
 
 from .. import crud
 from ..database import get_db
@@ -17,8 +19,11 @@ from ..services import process_transaction
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-@router.post("", response_model=TransactionWithFlag, status_code=201)
+@router.post("", response_model=TransactionWithFlag, status_code=201,
+             dependencies=[Depends(require_api_key)])
+@limiter.limit(WRITE_LIMIT)
 def create_transaction(
+    request: Request,
     payload: TransactionCreate,
     background: BackgroundTasks,
     db: Session = Depends(get_db),

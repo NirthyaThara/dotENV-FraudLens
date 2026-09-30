@@ -3,12 +3,13 @@ import uuid
 from datetime import timedelta
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.orm import Session
 
 from .. import crud
 from ..database import get_db
 from ..schemas import SimulateOut, TransactionCreate
+from ..security import WRITE_LIMIT, limiter, require_api_key
 from ..services import process_transaction
 from ..utils import utcnow
 
@@ -26,8 +27,11 @@ def _txn(user: str, amount: float, merchant: str, place: dict, ts) -> Transactio
     )
 
 
-@router.post("/simulate/{scenario}", response_model=SimulateOut)
+@router.post("/simulate/{scenario}", response_model=SimulateOut,
+             dependencies=[Depends(require_api_key)])
+@limiter.limit(WRITE_LIMIT)
 def simulate(
+    request: Request,
     scenario: Scenario,
     background: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -67,7 +71,8 @@ def simulate(
     return SimulateOut(created=len(batch), flags=flags)
 
 
-@router.delete("/demo/reset")
-def reset_demo(db: Session = Depends(get_db)):
+@router.delete("/demo/reset", dependencies=[Depends(require_api_key)])
+@limiter.limit(WRITE_LIMIT)
+def reset_demo(request: Request, db: Session = Depends(get_db)):
     crud.reset_all(db)
     return {"status": "ok"}
